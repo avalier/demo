@@ -1,0 +1,71 @@
+
+parameters:
+  projectName: ''
+  sonarLogin: ''
+
+steps:
+
+#- task: UseDotNet@2
+#  displayName: 'Use dotnet sdk 2.x (for SonarCloud)'
+#  inputs:
+#    version: 2.x
+
+#- task: SonarCloudPrepare@1
+#  inputs:
+#    SonarCloud: 'sonarCloudServiceConnection'
+#    organization: 'avalier'
+#    scannerMode: 'MSBuild'
+#    projectKey: $(projectName)
+#    extraProperties: |
+#      sonar.exclusions=**/obj/**,**/*.dll
+#      sonar.cs.opencover.reportsPaths=$(Agent.TempDirectory)/Coverage/**/coverage.opencover.xml  
+#    #sonar.cs.xunit.reportsPaths=$(Agent.TempDirectory)/*.trx
+
+#- task: SonarCloudPrepare@1
+#  inputs:
+#    SonarCloud: 'sonarCloudServiceConnection'
+#    organization: 'avalier'
+#    scannerMode: 'MSBuild'
+#    projectKey: $(projectName)
+#    extraProperties: |
+#      sonar.exclusions=**/obj/**,**/*.dll
+#      sonar.cs.opencover.reportsPaths=./.out/coverage.opencover.xml  
+#    #sonar.cs.xunit.reportsPaths=$(Agent.TempDirectory)/*.trx
+
+- script: |
+    ./bin/build-and-test.sh $(sonarLogin) 
+  displayName: 'Build and Test'
+
+#- script: |
+#    ./bin/build.sh
+#  displayName: Build (via docker)
+#
+#- script: |
+#    ./bin/test.sh
+#  displayName: Test (via docker)
+
+- task: PublishTestResults@2
+  condition: succeededOrFailed()
+  inputs:
+    testRunner: XUnit
+  displayName: 'Publish Test Results'
+
+- task: PublishCodeCoverageResults@1
+  inputs:
+    codeCoverageTool: 'cobertura'
+    summaryFileLocation: './.out/coverage.cobertura.xml'
+  displayName: 'Publish Coverage Results'
+
+- task: WhiteSource Bolt@19
+  displayName: 'Scan Dependencies (WhiteSource Bolt)'
+
+#- task: UseDotNet@2
+#  displayName: 'Use dotnet sdk 2.x (for SonarCloud)'
+#  inputs:
+#    version: 2.x
+
+#- task: SonarCloudAnalyze@1
+
+#- task: SonarCloudPublish@1
+#  inputs:
+#    pollingTimeoutSec: '300'

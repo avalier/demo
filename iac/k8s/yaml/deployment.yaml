@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: avalier-demo7
+  labels:
+    app: avalier-demo7
+spec:
+  replicas: 2
+  minReadySeconds: 10
+  selector:
+    matchLabels:
+      app: avalier-demo7
+  template:
+    metadata:
+      labels:
+        app: avalier-demo7
+    spec:
+      containers:
+      - name: avalier-demo7
+        image: avalier.azurecr.io/avalier-demo7:latest
+        ports:
+        - containerPort: 5000
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"

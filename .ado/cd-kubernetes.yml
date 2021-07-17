@@ -1,0 +1,168 @@
+#https://docs.microsoft.com/en-us/azure/devops/pipelines/ecosystems/dotnet-core?view=azure-devops
+#https://www.azuredevopslabs.com/labs/vstsextend/sonarqube/
+
+name: $(date:yyyyMMdd)$(rev:.r)-$(Build.SourceBranch)
+
+trigger:
+  branches:
+    include:
+    - '*'
+  tags:
+    include:
+    - '*'
+
+resources:
+- repo: self
+
+variables:
+  - group: sonar
+  - name: vmImageName
+    value: 'ubuntu-latest'
+  - name: dockerRegistry
+    value: 'avalier.azurecr.io'
+  - name: dockerImageName
+    value: 'avalier-demo7'
+  - name: projectName
+    value: 'Avalier.Demo7'
+  - name: sonarLogin
+    value: 'ddb4cd221940bf5d119e5e554fe75c15ede8bde4'
+
+stages:
+
+  - stage: BuildAndTest
+    displayName: Build & Test
+    jobs:
+    - job: BuildAndTest
+      displayName: Build & Test
+      pool:
+        vmImage: $(vmImageName)
+      steps:
+      - template: devops/docker-build-and-test.yml
+        parameters:
+          projectName: $(projectName)
+          sonarLogin: $(sonarLogin)
+    
+  - stage: Package
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
+    jobs:
+    - job: CreateDockerImage
+      displayName: Create Docker Image
+      #dependsOn: BuildAndTest
+      pool:
+        vmImage: $(vmImageName)
+        options: '--group-add docker'
+      variables:
+        label: ''
+      steps:
+      - script: |
+          # Replace "refs/tags/"" with ""
+          BuildSourceBranch=$(Build.SourceBranch)
+          dockerTagName=${BuildSourceBranch/refs\/tags\//}
+          echo Registry: $dockerRegistry
+          echo TagName: $dockerTagName
+          echo ImageName: $dockerImageName
+          # Export TagName
+          echo "##vso[task.setvariable variable=dockerTagName;]$dockerTagName"
+      - template: devops/docker-build-and-push.yml
+        parameters:
+          dockerRegistry: $(dockerRegistry)
+          dockerTagName: $(dockerTagName)
+          dockerImageName: $(dockerImageName)
+
+  - stage: Deploy_Beta
+    displayName: Deploy (beta)
+    jobs:
+    - deployment: Deploy_Beta
+      displayName: Deploy (beta)
+      pool:
+        vmImage: 'ubuntu-latest'
+      environment: 'beta'
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+            - download: current
+            - script: |
+                JSON=$(cat $(Pipeline.Workspace)/variables/variables.json)
+
+                RegistryName=$(echo $JSON | jq ".registry" -r)
+                ImageName=$(echo $JSON | jq ".image" -r)
+                TagName=$(echo $JSON | jq ".tag" -r)
+                
+                echo "##vso[task.setvariable variable=RegistryName]$RegistryName"
+                echo "##vso[task.setvariable variable=ImageName]$ImageName"
+                echo "##vso[task.setvariable variable=TagName]$TagName"
+
+                echo Registry: $RegistryName
+                echo Image: $ImageName
+                echo Tag: $TagName
+              
+            - task: HelmInstaller@1
+              displayName: 'Install Helm 3.0.2'
+              inputs:
+                helmVersion: 3.0.2
+
+            - task: AzureCLI@1
+              displayName: 'Install Chart (via helm)'
+              inputs:
+                azureSubscription: armServiceConnection
+                scriptLocation: inlineScript
+                inlineScript: |
+                  cd $(Pipeline.Workspace)
+                  az aks get-credentials --name kube-beta --resource-group aue-kube
+                  helm install avalier-demo7 ./k8s/chart --set tls.enabled=true --set ingress.host=avalier-demo7.beta.avalier.io
+
+  - stage: DAST
+    displayName: DAST
+    jobs:
+    - job: Scan
+      displayName: Scan (using OWASP ZAP)
+      pool:
+        vmImage: $(vmImageName)
+      steps:
+      - script: |
+          ./bin/scan-dast-using-zap.sh https://avalier-demo7.beta.avalier.io
+
+  - stage: Deploy_Production
+    displayName: Deploy (production)
+    jobs:
+    - deployment: Deploy_Production
+      displayName: Deploy (production)    
+      pool:
+        vmImage: 'ubuntu-latest'
+      environment: 'production'
+      strategy:
+        runOnce:
+          deploy:
+            steps:
+            - download: current
+            - script: |
+                JSON=$(cat $(Pipeline.Workspace)/variables/variables.json)
+
+                RegistryName=$(echo $JSON | jq ".registry" -r)
+                ImageName=$(echo $JSON | jq ".image" -r)
+                TagName=$(echo $JSON | jq ".tag" -r)
+                
+                echo "##vso[task.setvariable variable=RegistryName]$RegistryName"
+                echo "##vso[task.setvariable variable=ImageName]$ImageName"
+                echo "##vso[task.setvariable variable=TagName]$TagName"
+
+                echo Registry: $RegistryName
+                echo Image: $ImageName
+                echo Tag: $TagName
+              
+            - task: HelmInstaller@1
+              displayName: 'Install Helm 3.0.2'
+              inputs:
+                helmVersion: 3.0.2
+
+            - task: AzureCLI@1
+              displayName: 'Install Chart (via helm)'
+              inputs:
+                azureSubscription: armServiceConnection
+                scriptLocation: inlineScript
+                inlineScript: |
+                  cd $(Pipeline.Workspace)
+                  az aks get-credentials --name kube-apps --resource-group aue-kube
+                  helm install avalier-demo7 ./k8s/chart --set tls.enabled=true --set ingress.host=avalier-demo7.apps.avalier.io
+

@@ -1,0 +1,71 @@
+
+parameters:
+  projectName: ''
+
+steps:
+
+#- task: UseDotNet@2
+#  displayName: 'Use dotnet sdk 2.x (for SonarCloud)'
+#  inputs:
+#    version: 2.x
+
+#- task: SonarCloudPrepare@1
+#  inputs:
+#    SonarCloud: 'sonarCloudServiceConnection'
+#    organization: 'avalier'
+#    scannerMode: 'MSBuild'
+#    projectKey: $(projectName)
+#    extraProperties: |
+#      sonar.exclusions=**/obj/**,**/*.dll
+#      sonar.cs.opencover.reportsPaths=$(Agent.TempDirectory)/Coverage/**/coverage.opencover.xml  
+#    #sonar.cs.xunit.reportsPaths=$(Agent.TempDirectory)/*.trx
+
+- task: UseDotNet@2
+  displayName: 'Use dotnet sdk 3.x'
+  inputs:
+    version: 3.x
+    includePreviewVersions: true
+
+- task: DotNetCoreCLI@2
+  inputs:
+    command: build
+    projects: 'src/*.sln'
+    arguments: '--configuration Release' # Update this to match your need
+  displayName: 'Building'
+
+#- task: WhiteSource Bolt@19
+#  #inputs: $(Build.SourcesDirectory)
+
+#- script: |
+#    dotnet test ./src/BHP.Demo.sln /p:CollectCoverage=true /p:CoverletOutputFormat=\"opencover,cobertura\" /p:CoverletOutput="$(Agent.TempDirectory)/Coverage/""
+#  displayName: 'Testing'
+
+- task: DotNetCoreCLI@2
+  inputs:
+    command: test
+    projects: '**/*.Tests/*.csproj'
+    arguments: '--configuration $(buildConfiguration) /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=$(Agent.TempDirectory)/Coverage/'
+  displayName: 'Testing'
+
+- task: PublishTestResults@2
+  condition: succeededOrFailed()
+  inputs:
+    testRunner: XUnit
+  displayName: 'Publish Test Results'
+
+- task: PublishCodeCoverageResults@1
+  inputs:
+    codeCoverageTool: 'cobertura'
+    summaryFileLocation: '$(Agent.TempDirectory)/Coverage/coverage.cobertura.xml'
+  displayName: 'Publish Coverage Results'
+
+#- task: UseDotNet@2
+#  displayName: 'Use dotnet sdk 2.x (for SonarCloud)'
+#  inputs:
+#    version: 2.x
+
+#- task: SonarCloudAnalyze@1
+
+#- task: SonarCloudPublish@1
+#  inputs:
+#    pollingTimeoutSec: '300'

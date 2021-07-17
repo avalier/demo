@@ -1,0 +1,73 @@
+
+parameters:
+  dockerRegistry: 'avalier.azurecr.io'
+  dockerTagName: ''
+  dockerImageName: 'avalier-demo7'
+  helmVersion: 3.0.2
+
+steps:
+- script: |
+    docker build -t '$(dockerRegistry)/$(dockerImageName):latest' ./src
+  displayName: Docker - Build
+
+- script: |
+    #docker tag '$(dockerRegistry)/$(dockerImageName):latest' '$(dockerRegistry)/$(dockerImageName):$(Build.BuildNumber)'
+    #if [ ! -z "$(dockerTagName)" ]; then
+      docker tag '$(dockerRegistry)/$(dockerImageName):latest' '$(dockerRegistry)/$(dockerImageName):$(dockerTagName)'
+    #fi
+  displayName: Docker - Tag
+
+- script: |
+    docker image list | grep $(dockerRegistry)
+  displayName: Docker - List
+
+#- script: |
+  #    sudo apt-get -y install rpm
+  #    wget https://github.com/aquasecurity/trivy/releases/download/v0.1.6/trivy_0.1.6_Linux-64bit.deb
+  #    sudo dpkg -i trivy_0.1.6_Linux-64bit.deb
+  #  displayName: Docker - Trivy Installation (Container Security Analysis by Aquasec)
+
+  #- script: |
+  #    trivy --only-update alpine '$(dockerRegistry)/$(dockerImageName):$(Build.BuildNumber)'
+  #  displayName: Docker - Trivy Execution (Container Security Analysis by Aquasec)
+
+- bash: |
+    ./bin/scan-image-using-aquasec.sh '$(dockerRegistry)/$(dockerImageName):latest'
+  displayName: 'Scan image (using aquasec trivy)'
+  #failOnStderr: true
+
+- task: Docker@2
+  displayName: Docker - Login
+  inputs:
+    command: login
+    containerRegistry: dockerRegistryServiceConnection
+
+- task: Docker@2
+  displayName: Docker - Push
+  inputs:
+    command: push
+    containerRegistry: dockerRegistryServiceConnection
+    repository: '$(dockerImageName)'
+    tags: |
+      latest
+      $(dockerTagName)
+
+- bash: |
+    echo $(jq -n --arg registry "$(dockerRegistry)" --arg image "$(dockerImageName)" --arg tag "$(dockerTagName)" '{ registry: $registry, image: $image, tag: $tag }') > $(build.artifactStagingDirectory)/variables.json
+  failOnStderr: true
+  displayName: 'Create variables'
+
+- task: PublishPipelineArtifact@1
+  displayName: 'Publish Artifacts: /k8s'
+  inputs:
+    targetPath: 'cfg/k8s'
+    artifact: k8s
+
+- task: PublishPipelineArtifact@1
+  displayName: 'Publish Artifacts: variables.json'
+  inputs:
+    targetPath: '$(build.artifactStagingDirectory)/variables.json'
+    artifact: 'variables'
+
+#- publish: $(build.artifactStagingDirectory)
+#  artifact: variables

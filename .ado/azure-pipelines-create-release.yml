@@ -1,0 +1,26 @@
+#
+# Create Release (called manually)
+#
+# Calls npx standard-version to bump version, tag commit, and push to origin which then
+# triggers the ci pipeline to build and package.
+#
+
+trigger: none
+
+resources:
+- repo: self
+
+jobs:
+- job: Tag
+  dependsOn: Package
+  steps:
+  - checkout: self
+    persistCredentials: true
+    clean: true
+    fetchDepth: 1
+  - script: |
+      git config --global user.email "noreply@avalier.io"
+      git config --global user.name "Automaton (CI/CD)"
+      npx standard-version
+      git push --follow-tags origin HEAD:$(Build.SourceBranchName) --verbose
+    displayName: Git tag and commit

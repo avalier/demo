@@ -1,0 +1,72 @@
+name: build
+on:
+  push:
+    #branches:
+    #  - master
+  pull_request:
+
+jobs:
+
+  build:
+    name: Build, Test, and Scan (sca/sast)
+    runs-on: ubuntu-latest
+    env:
+      COVERAGE_THRESHOLD: 75
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: '5.0.x'
+
+      - name: Restore
+        run: |
+          dotnet restore ./src/Avalier.Demo7.sln
+
+      - name: Scan dependencies (using dotnet cli)
+        run: |
+          dotnet list ./src/Avalier.Demo7.sln package --vulnerable
+
+      - name: Scan SAST (using Semmle/CodeQL) - Initialize
+        uses: github/codeql-action/init@v1
+        with:
+          languages: 'csharp'
+
+      - name: Build
+        run: |
+          dotnet build --no-restore ./src/Avalier.Demo7.sln
+
+      - name: Scan SAST (using Semmle/CodeQL) - Analyze
+        uses: github/codeql-action/analyze@v1
+
+      - name: Test
+        run: |
+          dotnet test ./src/Avalier.Demo7.sln /p:CollectCoverage=true /p:Threshold=$COVERAGE_THRESHOLD
+
+  package:
+    name: Package and Scan
+    needs: [ build ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Package - Build an image from Dockerfile
+        run: |
+          docker build -t avalier/demo7:${{ github.sha }} ./src
+          
+      - name: Scan using Aquasec Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'avalier/demo7:${{ github.sha }}'
+          format: 'template'
+          template: '@/contrib/sarif.tpl' 
+          output: 'trivy-results.sarif'
+
+      - name: Upload scan results
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: 'trivy-results.sarif'
+

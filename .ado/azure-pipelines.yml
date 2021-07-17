@@ -1,0 +1,119 @@
+#https://docs.microsoft.com/en-us/azure/devops/pipelines/ecosystems/dotnet-core?view=azure-devops
+#https://www.azuredevopslabs.com/labs/vstsextend/sonarqube/
+
+# Commits should follow conventional commits #
+# https://www.conventionalcommits.org/en/v1.0.0/
+
+name: $(date:yyyyMMdd)$(rev:.r)-$(Build.SourceBranch)
+
+trigger:
+  batch: false
+  branches:
+    include:
+    - '*'
+  tags:
+    include:
+    - 'v*'
+
+pr:
+  branches:
+    include:
+    - '*'
+
+resources:
+- repo: self
+
+variables:
+  - group: Sonar
+  - name: vmImageName
+    value: 'ubuntu-latest'
+  - name: dockerRegistry
+    value: 'avalier.azurecr.io'
+  - name: dockerImageName
+    value: 'avalier-demo7'
+  - name: projectName
+    value: 'Avalier.Demo7'
+  - name: sonarLogin
+    value: $[variables.SONAR_LOGIN]
+
+stages:
+
+  - stage: BuildAndTest
+    displayName: Build & Test
+    jobs:
+    - job: BuildAndTest
+      displayName: Build & Test
+      pool:
+        vmImage: $(vmImageName)
+      steps:
+      - checkout: self
+        persistCredentials: true
+        clean: true
+      - script: |
+          ./bin/build-and-test.sh
+        displayName: 'Build and Test'
+      #- script: |
+      #    ./bin/build.sh
+      #  displayName: Build (via docker)
+      #
+      #- script: |
+      #    ./bin/test.sh
+      #  displayName: Test (via docker)
+      - task: PublishTestResults@2
+        condition: succeededOrFailed()
+        inputs:
+          testRunner: XUnit
+        displayName: 'Publish Test Results'
+      - task: PublishCodeCoverageResults@1
+        inputs:
+          codeCoverageTool: 'cobertura'
+          summaryFileLocation: './.out/coverage.cobertura.xml'
+        displayName: 'Publish Coverage Results'
+    
+  - stage: Package
+    condition: and(succeeded(), ne(variables['Build.Reason'], 'PullRequest'), startsWith(variables['Build.SourceBranch'], 'refs/tags/'))
+    jobs:
+    - job: CreateDockerImage
+      displayName: Create Docker Image
+      #dependsOn: BuildAndTest
+      pool:
+        vmImage: $(vmImageName)
+        options: '--group-add docker'
+      variables:
+        label: ''
+      steps:
+      - script: |
+          # Replace "refs/tags/"" with ""
+          BuildSourceBranch=$(Build.SourceBranch)
+          dockerTagName=${BuildSourceBranch/refs\/tags\//}
+          echo Registry: $dockerRegistry
+          echo TagName: $dockerTagName
+          echo ImageName: $dockerImageName
+          # Export TagName
+          echo "##vso[task.setvariable variable=dockerTagName;]$dockerTagName"
+      - template: cfg/azure-devops/docker-build-and-push.yml
+        parameters:
+          dockerRegistry: $(dockerRegistry)
+          dockerTagName: $(dockerTagName)
+          dockerImageName: $(dockerImageName)
+
+  - stage: Tag
+    condition: succeeded()
+    jobs:
+    - job: TagForCD
+      displayName: Tag for CD
+      pool:
+        vmImage: $(vmImageName)
+      steps:
+      - checkout: self
+        persistCredentials: true
+        clean: true
+        fetchDepth: 1
+      - script: |
+          git config --global user.email "noreply@avalier.io"
+          git config --global user.name "Automaton (CI/CD)"
+          git tag -f cd-$(Build.SourceBranchName) $(Build.SourceBranchName)
+          git push -f origin cd-$(Build.SourceBranchName) --verbose
+          #git tag -af beta -m 'Created new image ($dockerImageName) and tagged as beta'
+          #git push -f --follow-tags origin HEAD:$(Build.SourceBranchName) --verbose
+        displayName: Git tag and commit

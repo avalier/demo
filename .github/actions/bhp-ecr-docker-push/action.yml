@@ -1,0 +1,38 @@
+name: bhp-ecr-docker-push
+description: Push a docker image to an AWS ECR Registry
+inputs:
+  ecrRegistry:
+    description: 'The aws ecr registry'
+    required: true
+    default: ''
+  imageName:
+    description: 'Docker image name (eg demo)'
+    required: true
+    default: ''
+  imageTag:
+    description: 'Docker image tag (eg latest)'
+    required: false
+    default: 'latest'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Tag, and push image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{inputs.ecrRegistry}}
+        IMAGE_NAME: ${{inputs.imageName}}
+        IMAGE_TAG: ${{inputs.imageTag}}
+      shell: bash
+      run: |
+
+        # Create/upsert the "repository" if it doesnt exist in the ECR registry //
+        if [ -z $(aws ecr describe-repositories | jq -r ".repositories | map(select(.repositoryName == \"$IMAGE_NAME\"))[].repositoryName") ]
+        then
+          echo "Creating repository $IMAGE_NAME in registry $ECR_REGISTRY..."
+          aws ecr create-repository --repository-name $IMAGE_NAME
+        fi
+        
+        # Tag and push the image #
+        echo "Pushing $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG..."
+        docker tag $IMAGE_NAME $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
