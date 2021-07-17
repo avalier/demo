@@ -38,7 +38,7 @@ jobs:
       - name: Test
         run: |
           dotnet tool install dotnet-reportgenerator-globaltool -g
-          ${{github.workspace}}/.bin/avalier-demo-api/test.sh $COVERAGE_THRESHOLD ${{github.workspace}}/src/Avalier.Demo.sln
+          ${{github.workspace}}/.bin/test.sh $COVERAGE_THRESHOLD ${{github.workspace}}/src/Avalier.Demo.sln
 
       - name: Save artifacts (coverage)
         uses: actions/upload-artifact@v2
@@ -102,7 +102,7 @@ jobs:
       - name: Scan using Veracode
         id: scan
         run: |
-           ${{github.workspace}}/.bin/avalier-demo-api/scan-sca-using-veracode.sh ${{github.workspace}}/src
+           ${{github.workspace}}/.bin/scan-sca-using-veracode.sh ${{github.workspace}}/src
       
       - name: Extract run logs
         run: |
@@ -216,7 +216,7 @@ jobs:
       - name: Scan SAST (using Veracode Pipeline Scan)
         id: scan
         run: |
-          ${{github.workspace}}/.bin/avalier-demo-api/scan-sast-using-veracode.sh ${{github.workspace}}/src/Avalier.Demo.Host/bin/Debug/netcoreapp5.0/
+          ${{github.workspace}}/.bin/scan-sast-using-veracode.sh ${{github.workspace}}/src/Avalier.Demo.Host/bin/Debug/netcoreapp5.0/
           echo "::set-output name=exitCode::$?"
 
       #- name: Convert pipeline scan output to SARIF format
@@ -258,7 +258,7 @@ jobs:
           
       - name: Scan using Veracode
         run: |
-          ${{github.workspace}}/.bin/avalier-demo-api/scan-image-using-veracode.sh avalier/demo:${{github.sha}}
+          ${{github.workspace}}/.bin/scan-image-using-veracode.sh avalier/demo:${{github.sha}}
 
       #- name: Upload scan results
       #  uses: github/codeql-action/upload-sarif@v1
@@ -272,14 +272,14 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OUTPUT_PATH: '.out/scan-container'
-      IMAGE_NAME: avalier-demo-api
+      IMAGE_NAME: avalier/demo
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
       - name: Package - Build an image from Dockerfile
         run: |
-          docker build -t $IMAGE_NAME ${{github.workspace}}/modules/avalier-demo-api
+          docker build -t $IMAGE_NAME ${{github.workspace}}/src
           
       - name: Setup
         run: |
