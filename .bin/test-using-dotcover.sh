@@ -33,7 +33,8 @@ CoverageExitCode=$?
 set -e
 
 # Extract Coverage #
-CoveragePercentage=$(cat .out/coverage/dotCover.Output.xml | grep "<Root" | grep -Po '(?<=CoveragePercent=\")(.*?)(?=\")')
+PWD=$(pwd)
+CoveragePercentage=$(cat $PWD/.out/coverage/dotCover.Output.xml | grep "<Root" | grep -Po '(?<=CoveragePercent=\")(.*?)(?=\")')
 echo  "Coverage: $CoveragePercentage%"
 
 # Create coverage report #
