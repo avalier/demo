@@ -38,9 +38,8 @@ jobs:
       - name: Test & Cover
         run: |
           dotnet tool install JetBrains.dotCover.GlobalTool -g
+          dotnet tool install dotnet-reportgenerator-globaltool -g
           ${{github.workspace}}/.bin/test-using-dotcover.sh $COVERAGE_THRESHOLD ${{github.workspace}}/src/Avalier.Demo.sln
-        #dotnet tool install dotnet-reportgenerator-globaltool -g
-        #${{github.workspace}}/.bin/test-using-coverlet.sh $COVERAGE_THRESHOLD ${{github.workspace}}/src/Avalier.Demo.sln
 
       - name: Save artifacts (coverage)
         uses: actions/upload-artifact@v2

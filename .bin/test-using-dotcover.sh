@@ -38,7 +38,7 @@ CoveragePercentage=$(cat $PWD/.out/coverage/dotCover.Output.xml | grep "<Root" |
 echo  "Coverage: $CoveragePercentage%"
 
 # Create coverage report #
-#reportgenerator -reports:.out/coverage/dotCover.Output.xml -targetdir:.out/coverage/html
+reportgenerator -reports:$(pwd)/.out/coverage/dotCover.Output.xml -targetdir:$(pwd)/.out/coverage/html
 
 # Fail if coverage is insufficient) #
 if [ $CoveragePercentage -lt $CoverageThreshold ]
