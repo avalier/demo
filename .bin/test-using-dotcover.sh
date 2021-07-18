@@ -25,7 +25,7 @@ mkdir -p ./.out/coverage/html
 set +e
 dotnet dotcover test $SolutionFile \
     --dcReportType=DetailedXML \
-    --dcOutput=.out/coverage/dotCover.Output.xml \
+    --dcOutput=$(pwd)/.out/coverage/dotCover.Output.xml \
     --dcHideAutoProperties \
     --dcFilters=-:Avalier.Demo.**.Tests \
     --dcAttributeFilters="System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute"
@@ -37,7 +37,7 @@ CoveragePercentage=$(cat .out/coverage/dotCover.Output.xml | grep "<Root" | grep
 echo  "Coverage: $CoveragePercentage%"
 
 # Create coverage report #
-reportgenerator -reports:.out/coverage/dotCover.Output.xml -targetdir:.out/coverage/html
+#reportgenerator -reports:.out/coverage/dotCover.Output.xml -targetdir:.out/coverage/html
 
 # Fail if coverage is insufficient) #
 if [ $CoveragePercentage -lt $CoverageThreshold ]
