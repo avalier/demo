@@ -19,7 +19,7 @@ then
 fi
 
 # Make sure output folder exists #
-mkdir -p ./.out/coverage/html
+mkdir -p $(pwd)/.out/coverage/html
 
 # Run unit tests and code coverage (and fail if code coverage threshold is not met) #
 set +e
