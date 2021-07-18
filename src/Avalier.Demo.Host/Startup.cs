@@ -41,7 +41,7 @@ namespace Avalier.Demo.Host
         // Added for OpenTelemetry OTLP support //
         public string OtlpEndpoint => System.Environment.GetEnvironmentVariable("OTLP_ENDPOINT") ?? "";
 
-        // This method gets called by the runtime. Use this method to add services to the container.
+        [ExcludeFromCodeCoverage]
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddTransientByConvention();
@@ -83,18 +83,9 @@ namespace Avalier.Demo.Host
             });
         }
         
-        /*/
-        public void ConfigureContainer(ContainerBuilder builder)
-        {
-            builder.RegisterModule(new DefaultModule());
-        }
-        //*/
-
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
+        [ExcludeFromCodeCoverage]
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            //this.Container = app.ThrowIfNull(nameof(app)).ApplicationServices.GetAutofacRoot();
-            
             if (env.IsDevelopment())
             {
                 Serilog.Log.Information("Development mode is enabled");

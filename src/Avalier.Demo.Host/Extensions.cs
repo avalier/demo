@@ -17,6 +17,8 @@ namespace Avalier.Demo.Host
     [SuppressMessage("Microsoft.Design", "CA1724")]
     public static class Extensions
     {
+
+        [ExcludeFromCodeCoverage]
         public static IApplicationBuilder UseOtlpResponseHeaders(this IApplicationBuilder app) {
             app.Use(async (context, next) =>
             {
@@ -32,12 +34,14 @@ namespace Avalier.Demo.Host
             return app;
         }
         
+        [ExcludeFromCodeCoverage]
         public static LoggerConfiguration Evaluate(this LoggerSinkConfiguration loggerSinkConfiguration, Func<LoggerSinkConfiguration, LoggerConfiguration> evaluation)
         {
             if (null == evaluation) throw new ArgumentNullException(nameof(evaluation));
             return evaluation.Invoke(loggerSinkConfiguration);
         }
 
+        [ExcludeFromCodeCoverage]
         public static IServiceCollection AddTransientByConvention(this IServiceCollection services, params Assembly[] assemblies)
         {
             // Default to entry assembly if no assemblies were specified //
@@ -65,6 +69,7 @@ namespace Avalier.Demo.Host
             return services;
         }
 
+        [ExcludeFromCodeCoverage]
         public static async Task<IEnumerable<T>> ToListAsync<T>(this IAsyncEnumerable<T> values)
         {
             if (null == values) throw new ArgumentNullException(nameof(values));
@@ -73,6 +78,7 @@ namespace Avalier.Demo.Host
             return items;
         }
    
+        [ExcludeFromCodeCoverage]
         public static string Merge(this IEnumerable<string> values, string separator) {
             if (null == values) throw new ArgumentNullException(nameof(values));
             var buffer = new StringBuilder();

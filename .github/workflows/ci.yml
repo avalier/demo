@@ -38,7 +38,7 @@ jobs:
       - name: Test
         run: |
           dotnet tool install dotnet-reportgenerator-globaltool -g
-          ${{github.workspace}}/.bin/test.sh $COVERAGE_THRESHOLD ${{github.workspace}}/src/Avalier.Demo.sln
+          ${{github.workspace}}/.bin/test-using-dotcover.sh $COVERAGE_THRESHOLD ${{github.workspace}}/src/Avalier.Demo.sln
 
       - name: Save artifacts (coverage)
         uses: actions/upload-artifact@v2

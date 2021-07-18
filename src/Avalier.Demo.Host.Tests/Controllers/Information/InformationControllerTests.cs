@@ -25,7 +25,7 @@ namespace Avalier.Demo.Host.Controllers.Information
             var controller = new InformationController();
             var response = (OkObjectResult)controller.Get();
 
-            _output.WriteLine($"{response.Value}");
+            _output.WriteLine($"{response.Value.ToJson()}");
             response.ShouldNotBeNull();
         }
     }
